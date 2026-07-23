@@ -223,10 +223,62 @@
   .fab-dashboard:hover{transform:translateY(-2px) scale(1.05);box-shadow:0 6px 14px rgba(43,38,32,0.22), 0 14px 32px rgba(43,38,32,0.2);}
   .fab-dashboard:active{transform:scale(0.95);}
   .fab-dashboard svg{width:22px;height:22px;}
+
+  /* ---------- formulario público del huésped ---------- */
+  #guest-public-view{display:none;max-width:760px;margin:0 auto;padding:32px 20px 70px;}
+  #guest-public-view.active{display:block;}
+  .guest-hero{text-align:center;margin-bottom:22px;}
+  .guest-hero h1{margin:8px 0 6px;font-size:30px;}
+  .guest-hero p{color:var(--ink-soft);margin:0;}
+  .guest-status{padding:12px 14px;border-radius:9px;margin-bottom:16px;font-size:13.5px;display:none;}
+  .guest-status.show{display:block;}
+  .guest-status.ok{background:var(--pine-tint);color:var(--pine-dark);}
+  .guest-status.error{background:var(--clay-tint);color:var(--clay);}
+  .guest-check{display:flex;align-items:flex-start;gap:9px;margin:12px 0 18px;}
+  .guest-check input{width:auto;margin-top:3px;}
+
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
+
+<section id="guest-public-view">
+  <div class="guest-hero">
+    <div style="font-size:38px;">🌿</div>
+    <h1>Finca La Tomasa</h1>
+    <p>Completá los datos necesarios para tu estadía.</p>
+  </div>
+  <div class="card">
+    <div id="guest-form-loading" style="text-align:center;color:var(--ink-soft);padding:20px;">Cargando formulario…</div>
+    <div id="guest-form-content" style="display:none;">
+      <div id="guest-form-summary" class="note" style="margin-bottom:18px;"></div>
+      <div id="guest-form-status" class="guest-status"></div>
+      <div class="field"><label>Nombre y apellido *</label><input id="gf-nombre" type="text"></div>
+      <div class="row2">
+        <div class="field"><label>DNI o pasaporte *</label><input id="gf-documento" type="text"></div>
+        <div class="field"><label>Fecha de nacimiento</label><input id="gf-nacimiento" type="date"></div>
+      </div>
+      <div class="row2">
+        <div class="field"><label>Teléfono *</label><input id="gf-telefono" type="tel"></div>
+        <div class="field"><label>Email</label><input id="gf-email" type="email"></div>
+      </div>
+      <div class="field"><label>Ciudad / procedencia</label><input id="gf-procedencia" type="text"></div>
+      <div class="field"><label>Nombres de acompañantes</label><textarea id="gf-acompanantes" rows="3" placeholder="Un nombre por línea"></textarea></div>
+      <div class="row2">
+        <div class="field"><label>Hora estimada de llegada</label><input id="gf-llegada" type="time"></div>
+        <div class="field"><label>¿Viaja con mascota?</label><select id="gf-mascota"><option value="no">No</option><option value="si">Sí</option></select></div>
+      </div>
+      <div class="row2">
+        <div class="field"><label>Marca y modelo del vehículo</label><input id="gf-vehiculo" type="text"></div>
+        <div class="field"><label>Patente</label><input id="gf-patente" type="text"></div>
+      </div>
+      <div class="field"><label>Observaciones</label><textarea id="gf-observaciones" rows="3"></textarea></div>
+      <label class="guest-check"><input id="gf-acepta" type="checkbox"><span>Acepto que estos datos sean utilizados únicamente para gestionar mi estadía en Finca La Tomasa. *</span></label>
+      <button class="btn btn-primary" id="btn-guest-submit" style="width:100%;justify-content:center;">Enviar datos</button>
+    </div>
+  </div>
+</section>
+
 
 <header class="top">
   <div class="brand-row">
@@ -579,6 +631,7 @@
       <div class="field"><label>Patente</label><input type="text" id="f-vehiculo-patente" placeholder="Ej: AB123CD"></div>
     </div>
     <div class="field"><label>Notas</label><textarea id="f-notas" rows="2" placeholder="Mascota, hora de llegada, pedidos especiales..."></textarea></div>
+    <div id="guest-admin-status" style="display:none;margin-top:12px;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--bg);font-size:13px;"></div>
     <div id="reserva-historial-wrap" style="display:none;">
       <div style="font-size:12.5px;font-weight:600;color:var(--ink-soft);text-transform:uppercase;letter-spacing:0.4px;margin:16px 0 6px;">Historial de modificaciones</div>
       <div id="reserva-historial" style="max-height:130px;overflow-y:auto;border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:12.5px;color:var(--ink-soft);"></div>
@@ -588,6 +641,7 @@
         <button class="btn btn-danger btn-small" id="btn-borrar-reserva" style="display:none;">Eliminar reserva</button>
         <button class="btn btn-ghost btn-small" id="btn-imprimir-reserva" style="display:none;">🖨 Imprimir recibo</button>
         <button class="btn btn-primary btn-small" id="btn-notificar-reserva" style="display:none;">Notificar por WhatsApp</button>
+        <button class="btn btn-ghost btn-small" id="btn-formulario-huesped" style="display:none;">📋 Enviar formulario al huésped</button>
       </div>
       <div class="right">
         <button class="btn btn-ghost" id="btn-cancelar-reserva">Cancelar</button>
@@ -1615,6 +1669,8 @@ function openReservaModal(id){
     delBtn.textContent = 'Eliminar reserva';
     document.getElementById('btn-imprimir-reserva').style.display='inline-flex';
     document.getElementById('btn-notificar-reserva').style.display = (config.whatsappAvisos||[]).length ? 'inline-flex' : 'none';
+    document.getElementById('btn-formulario-huesped').style.display = cloudUser ? 'inline-flex' : 'none';
+    cargarEstadoFormularioHuesped(r);
     document.getElementById('reserva-historial-wrap').style.display='block';
     const hist = r.historial||[];
     document.getElementById('reserva-historial').innerHTML = hist.length
@@ -1649,6 +1705,8 @@ function openReservaModal(id){
     delBtn.style.display='none';
     document.getElementById('btn-imprimir-reserva').style.display='none';
     document.getElementById('btn-notificar-reserva').style.display='none';
+    document.getElementById('btn-formulario-huesped').style.display='none';
+    document.getElementById('guest-admin-status').style.display='none';
     document.getElementById('reserva-historial-wrap').style.display='none';
     const saveBtn2 = document.getElementById('btn-guardar-reserva');
     saveBtn2.classList.remove('confirming-edit');
@@ -1661,6 +1719,70 @@ function closeReservaModal(){
   document.getElementById('overlay-reserva').classList.remove('open');
   editReservaId = null;
 }
+
+function generarTokenFormulario(){
+  if(window.crypto && crypto.randomUUID) return crypto.randomUUID();
+  return uid()+uid()+uid();
+}
+function urlFormularioHuesped(token){
+  const u=new URL(location.href);
+  u.search=''; u.hash='';
+  u.searchParams.set('guest',token);
+  const sb=localStorage.getItem('latomasa_cloud_url')||'';
+  const pk=localStorage.getItem('latomasa_cloud_key')||'';
+  if(sb) u.searchParams.set('sb',sb);
+  if(pk) u.searchParams.set('pk',pk);
+  return u.toString();
+}
+async function asegurarFormularioHuesped(r){
+  if(!cloudClient || !cloudUser) throw new Error('Primero iniciá sesión en la nube.');
+  if(r.guestFormToken) return r.guestFormToken;
+  const token=generarTokenFormulario();
+  const {error}=await cloudClient.from('guest_forms').insert({
+    owner_id:cloudUser.id,reservation_id:r.id,token,
+    guest_name:r.huesped||'',checkin:r.checkin,checkout:r.checkout,status:'pendiente'
+  });
+  if(error) throw error;
+  r.guestFormToken=token;
+  await saveReservas();
+  return token;
+}
+async function cargarEstadoFormularioHuesped(r){
+  const box=document.getElementById('guest-admin-status');
+  if(!box) return;
+  if(!cloudClient || !cloudUser){ box.style.display='none'; return; }
+  box.style.display='block'; box.textContent='Formulario del huésped: consultando estado…';
+  try{
+    const {data,error}=await cloudClient.from('guest_forms').select('status,submitted_at,full_name,phone,email,document_id,birth_date,origin,companions,arrival_time,has_pet,vehicle,license_plate,notes,token').eq('reservation_id',r.id).eq('owner_id',cloudUser.id).maybeSingle();
+    if(error) throw error;
+    if(!data){ box.innerHTML='<b>Formulario del huésped:</b> todavía no generado.'; return; }
+    r.guestFormToken=data.token;
+    if(data.status==='completado'){
+      box.innerHTML=`<b>Formulario completado ✓</b>${data.submitted_at?' · '+new Date(data.submitted_at).toLocaleString('es-AR'):''}<br>
+      <span style="color:var(--ink-soft);">${data.full_name||''}${data.document_id?' · DNI/Pasaporte '+data.document_id:''}${data.phone?' · '+data.phone:''}</span>`;
+      r.guestFormData=data;
+      if(data.phone) r.telefono=data.phone;
+      if(data.arrival_time) r.horaLlegada=data.arrival_time;
+      if(data.vehicle || data.license_plate){ r.vehiculo=true; r.vehiculoMarca=data.vehicle||r.vehiculoMarca; r.vehiculoPatente=(data.license_plate||r.vehiculoPatente||'').toUpperCase(); }
+      await saveReservas();
+    }else box.innerHTML='<b>Formulario del huésped:</b> enviado, pendiente de completar.';
+  }catch(e){ box.textContent='No se pudo consultar el formulario: '+(e.message||'error'); }
+}
+async function compartirFormularioHuesped(){
+  if(!editReservaId) return;
+  const r=reservas.find(x=>x.id===editReservaId); if(!r) return;
+  try{
+    const token=await asegurarFormularioHuesped(r);
+    const link=urlFormularioHuesped(token);
+    const texto=`Hola ${r.huesped||''}, para completar tu reserva en Finca La Tomasa necesitamos que cargues tus datos en este enlace: ${link}`;
+    const numero=(r.telefono||'').replace(/\D/g,'');
+    const wa=numero?`https://wa.me/${numero}?text=${encodeURIComponent(texto)}`:`https://wa.me/?text=${encodeURIComponent(texto)}`;
+    window.open(wa,'_blank');
+    await cargarEstadoFormularioHuesped(r);
+  }catch(e){ showToast('No se pudo generar el formulario: '+(e.message||'error')); }
+}
+document.getElementById('btn-formulario-huesped').addEventListener('click', compartirFormularioHuesped);
+
 document.getElementById('btn-nueva-reserva').addEventListener('click', ()=> openReservaModal(null));
 document.getElementById('btn-cancelar-reserva').addEventListener('click', closeReservaModal);
 document.getElementById('btn-notificar-reserva').addEventListener('click', ()=>{
@@ -2072,12 +2194,70 @@ document.getElementById('input-import-backup')?.addEventListener('change', async
   if(file) await importarBackupCompleto(file);
   e.target.value='';
 });
-if('serviceWorker' in navigator && location.protocol.startsWith('http')){
-  window.addEventListener('load',()=>navigator.serviceWorker.register('./service-worker.js').catch(()=>{}));
+
+/* ================= FORMULARIO PÚBLICO DEL HUÉSPED ================= */
+async function iniciarFormularioPublico(){
+  const token=new URLSearchParams(location.search).get('guest');
+  if(!token) return false;
+  document.querySelector('header.top')?.remove();
+  document.querySelector('nav.tabs')?.remove();
+  document.querySelector('main')?.remove();
+  document.getElementById('fab-dashboard')?.remove();
+  document.getElementById('guest-public-view').classList.add('active');
+  const loading=document.getElementById('guest-form-loading');
+  const content=document.getElementById('guest-form-content');
+  const status=document.getElementById('guest-form-status');
+  const setStatus=(msg,ok=false)=>{status.textContent=msg;status.className='guest-status show '+(ok?'ok':'error');};
+  try{
+    const params=new URLSearchParams(location.search);
+    const url=params.get('sb')||localStorage.getItem('latomasa_cloud_url')||'';
+    const key=params.get('pk')||localStorage.getItem('latomasa_cloud_key')||'';
+    if(!url || !key) throw new Error('Este dispositivo todavía no tiene configurada la conexión. Abrí primero el sistema administrativo y configurá Supabase.');
+    cloudClient=window.supabase.createClient(url,key,{auth:{persistSession:false}});
+    const {data,error}=await cloudClient.rpc('get_guest_form',{p_token:token});
+    if(error) throw error;
+    const f=Array.isArray(data)?data[0]:data;
+    if(!f) throw new Error('El enlace no es válido o ya no está disponible.');
+    loading.style.display='none'; content.style.display='block';
+    document.getElementById('guest-form-summary').innerHTML=`Reserva a nombre de <b>${f.guest_name||'huésped'}</b><br>${f.checkin?fmtDate(f.checkin):''} → ${f.checkout?fmtDate(f.checkout):''}`;
+    document.getElementById('gf-nombre').value=f.full_name||f.guest_name||'';
+    document.getElementById('gf-documento').value=f.document_id||'';
+    document.getElementById('gf-nacimiento').value=f.birth_date||'';
+    document.getElementById('gf-telefono').value=f.phone||'';
+    document.getElementById('gf-email').value=f.email||'';
+    document.getElementById('gf-procedencia').value=f.origin||'';
+    document.getElementById('gf-acompanantes').value=f.companions||'';
+    document.getElementById('gf-llegada').value=f.arrival_time||'';
+    document.getElementById('gf-mascota').value=f.has_pet?'si':'no';
+    document.getElementById('gf-vehiculo').value=f.vehicle||'';
+    document.getElementById('gf-patente').value=f.license_plate||'';
+    document.getElementById('gf-observaciones').value=f.notes||'';
+    if(f.status==='completado') setStatus('Tus datos ya fueron enviados. Podés corregirlos y volver a enviarlos.',true);
+    document.getElementById('btn-guest-submit').addEventListener('click',async()=>{
+      const full_name=document.getElementById('gf-nombre').value.trim();
+      const document_id=document.getElementById('gf-documento').value.trim();
+      const phone=document.getElementById('gf-telefono').value.trim();
+      if(!full_name || !document_id || !phone || !document.getElementById('gf-acepta').checked){ setStatus('Completá nombre, documento, teléfono y aceptá el uso de los datos.'); return; }
+      const btn=document.getElementById('btn-guest-submit'); btn.disabled=true; btn.textContent='Enviando…';
+      const payload={
+        p_token:token,p_full_name:full_name,p_document_id:document_id,
+        p_birth_date:document.getElementById('gf-nacimiento').value||null,p_phone:phone,
+        p_email:document.getElementById('gf-email').value.trim()||null,p_origin:document.getElementById('gf-procedencia').value.trim()||null,
+        p_companions:document.getElementById('gf-acompanantes').value.trim()||null,p_arrival_time:document.getElementById('gf-llegada').value||null,
+        p_has_pet:document.getElementById('gf-mascota').value==='si',p_vehicle:document.getElementById('gf-vehiculo').value.trim()||null,
+        p_license_plate:document.getElementById('gf-patente').value.trim().toUpperCase()||null,p_notes:document.getElementById('gf-observaciones').value.trim()||null
+      };
+      const {data:ok,error:err}=await cloudClient.rpc('submit_guest_form',payload);
+      btn.disabled=false; btn.textContent='Enviar datos';
+      if(err || ok!==true){ setStatus('No se pudieron enviar los datos. Probá nuevamente.'); return; }
+      setStatus('¡Datos enviados correctamente! Muchas gracias.',true); window.scrollTo({top:0,behavior:'smooth'});
+    });
+  }catch(e){ loading.textContent=e.message||'No se pudo abrir el formulario.'; }
+  return true;
 }
 
 /* ================= INIT ================= */
-loadData().then(initCloud);
+(async()=>{ if(await iniciarFormularioPublico()) return; await loadData(); await initCloud(); })();
 </script>
 </body>
 </html>
